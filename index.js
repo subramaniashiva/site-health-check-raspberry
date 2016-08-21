@@ -43,7 +43,7 @@ let requestSite = function requestSite() {
   let request = http.request(optionsGet, function(response) {
     console.log('sending request');
     // Check the reponse code. If it is greater than 400, send mail
-    if(parseInt(response.statusCode, 10) >= 200) {
+    if(parseInt(response.statusCode, 10) >= 400) {
       sendMail(mail, 'status code is ' + response.statusCode)
     }
 

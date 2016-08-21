@@ -5,12 +5,14 @@ let mailer = require('nodemailer');
 // Import configurations
 let CONFIG = require('./config.js');
 
+// The URL that needs to be requested
 let optionsGet = {
   method: CONFIG.request.method,
   host : CONFIG.request.host,
   path : CONFIG.request.path
 };
 
+// Configuration for the mailer
 let smtpTransport = mailer.createTransport(CONFIG.mailConfig.type, {
   service: CONFIG.mailConfig.service,
   auth: {
@@ -19,6 +21,7 @@ let smtpTransport = mailer.createTransport(CONFIG.mailConfig.type, {
   }
 });
 
+// Mail template
 let mail= {
   from: CONFIG.mailDetails.from,
   to: CONFIG.mailDetails.to,
@@ -26,37 +29,33 @@ let mail= {
   html: CONFIG.mailDetails.html
 }
 
-let requestSite = function requestSite() {
-  setInterval(function() {
-    // Initiate the HTTP request
-    let request = http.request(optionsGet, function(response) {
-      // Check the reponse code. If it is greater than 400, send mail
-      if(parseInt(response.statusCode, 10) > 400) {
-        // Send the status code in the mail body
-        mail.html = 'status code is ' + response.statusCode;
-
-        // Send the mail
-        smtpTransport.sendMail(mail, function(error, response) {
-          // Useful for finding the error
-          console.log('error is ', error);
-          smtpTransport.close();
-        });
-
-      }
-
-    });
-    
-    // Send mail on error
-    request.on('error', function(e) {
-      mail.html = 'Error while getting request, ' + e;
-      smtpTransport.sendMail(mail, function() {
-        smtpTransport.close();
-      })
-    });
-
-    request.end();
-
-  }, CONFIG.checkInterval)
+// Function to send mail
+let sendMail = function sendMail(mailTemplate, data) {
+  mailTemplate.html = (data ? data : '');
+  smtpTransport.sendMail(mailTemplate, function(error, response) {
+    smtpTransport.close()
+  })
 }
 
-requestSite();
+// Function to send request and based on the response, send a mail
+let requestSite = function requestSite() {
+  // Initiate the HTTP request
+  let request = http.request(optionsGet, function(response) {
+    console.log('sending request');
+    // Check the reponse code. If it is greater than 400, send mail
+    if(parseInt(response.statusCode, 10) >= 200) {
+      sendMail(mail, 'status code is ' + response.statusCode)
+    }
+
+  });
+  
+  // Send mail on error
+  request.on('error', function(e) {
+    sendMail(mail, 'Error while getting request, ' + e)
+  });
+
+  request.end();
+}
+
+
+setInterval(requestSite, CONFIG.checkInterval);
